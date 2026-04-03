@@ -2,13 +2,13 @@ import json
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api.signals import router as signals_router
-from backend.services.trade_stream_service import TradeStreamService
-from backend.services.candle_stream_service import candle_service
-from backend.services.liquidity_service import liquidity_service
-from backend.services.liquidation_service import liquidation_service
-from backend.services.edge_service import edge_service
-from backend.services.websocket_manager import manager
+from api.signals import router as signals_router
+from services.trade_stream_service import TradeStreamService
+from services.candle_stream_service import candle_service
+from services.liquidity_service import liquidity_service
+from services.liquidation_service import liquidation_service
+from services.edge_service import edge_service
+from services.websocket_manager import manager
 
 app = FastAPI(title="Crypto Trade Assistant v5.5 (Alpha)")
 

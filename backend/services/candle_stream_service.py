@@ -4,8 +4,8 @@ import websockets
 import pandas as pd
 import requests
 from typing import List, Dict, Tuple
-from backend.services.signal_engine import SignalEngine
-from backend.services.websocket_manager import manager
+from services.signal_engine import SignalEngine
+from services.websocket_manager import manager
 
 class CandleStreamService:
     """Subscribes to 1m, 15m, and 1h kline streams for MTF trend confirmation."""
@@ -105,8 +105,8 @@ class CandleStreamService:
                 if btc_1h is not None: btc_trend_1h = SignalEngine.get_trend(btc_1h)
                 
                 # Get Contexts (Alpha v5.0: Liquidity + Liquidation)
-                from backend.services.liquidity_service import liquidity_service
-                from backend.services.liquidation_service import liquidation_service
+                from services.liquidity_service import liquidity_service
+                from services.liquidation_service import liquidation_service
                 liq_context = liquidity_service.get_liquidity_context(symbol)
                 liquid_context = liquidation_service.get_magnet_context(symbol)
                 
@@ -117,7 +117,7 @@ class CandleStreamService:
                     liquidation_context=liquid_context
                 )
                 if signal_data:
-                    from backend.services.trade_manager import trade_manager
+                    from services.trade_manager import trade_manager
                     trade_manager.activate_signal(symbol.upper(), signal_data)
                     
                     await manager.broadcast(json.dumps({

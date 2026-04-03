@@ -4,7 +4,7 @@ import websockets
 from typing import List, Dict
 import pandas as pd
 ACTIVE_SYMBOLS = ["btcusdt", "ethusdt", "solusdt", "bnbusdt", "xrpusdt", "adausdt", "dogeusdt", "linkusdt", "dotusdt", "avaxusdt"]
-from backend.services.websocket_manager import manager
+from services.websocket_manager import manager
 
 class TradeStreamService:
     """Subscribes to @aggTrade streams for tick-by-tick price updates."""
@@ -38,8 +38,8 @@ class TradeStreamService:
         direction = "down" if data['m'] else "up"
         
         # Get OBI and Large Liq for Alpha v5.0
-        from backend.services.liquidity_service import liquidity_service
-        from backend.services.liquidation_service import liquidation_service
+        from services.liquidity_service import liquidity_service
+        from services.liquidation_service import liquidation_service
         obi = liquidity_service.get_liquidity_context(symbol)['obi']
         
         last_liq = liquidation_service.last_large_liq.get(symbol.lower())
@@ -65,15 +65,15 @@ class TradeStreamService:
         await manager.broadcast(json.dumps(payload), "prices")
         
         # 2. Update Active Trade Lifecycle (Trailing Stops, PnL, BE)
-        from backend.services.trade_manager import trade_manager
-        from backend.services.candle_stream_service import candle_service
+        from services.trade_manager import trade_manager
+        from services.candle_stream_service import candle_service
         
         # Get current ATR for the symbol if available
         atr = 0
         if symbol.lower() in candle_service.data_frames:
             df = candle_service.data_frames[symbol.lower()]
             if len(df) >= 14:
-                from backend.utils.indicators import calculate_atr
+                from utils.indicators import calculate_atr
                 atr_series = calculate_atr(df['high'].astype(float), df['low'].astype(float), df['close'].astype(float))
                 atr = float(atr_series.iloc[-1])
                 

@@ -1,8 +1,8 @@
 import pandas as pd
 from datetime import datetime
-from backend.utils.indicators import calculate_ema, calculate_rsi, calculate_macd, calculate_volume_ratio
-from backend.schemas.signal import TradingSignal
-from backend.services.cache_manager import cache
+from utils.indicators import calculate_ema, calculate_rsi, calculate_macd, calculate_volume_ratio
+from schemas.signal import TradingSignal
+from services.cache_manager import cache
 
 class SignalService:
     @staticmethod

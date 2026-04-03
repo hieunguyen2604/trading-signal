@@ -3,7 +3,7 @@ from typing import List, Set
 import asyncio
 import json
 from datetime import datetime
-from backend.services.websocket_manager import manager
+from services.websocket_manager import manager
 
 router = APIRouter()
 

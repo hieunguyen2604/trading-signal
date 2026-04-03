@@ -1,6 +1,6 @@
 from typing import Dict, List
 from datetime import datetime
-from backend.schemas.signal import TradingSignal
+from schemas.signal import TradingSignal
 
 class SignalCache:
     """In-memory cache for trading signals, designed to be Redis-ready."""

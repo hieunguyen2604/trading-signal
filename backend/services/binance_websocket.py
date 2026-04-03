@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 from typing import List, Dict
 from datetime import datetime
-from backend.services.signal_calculator import SignalService
+from services.signal_calculator import SignalService
 
 class BinanceWS:
     def __init__(self, symbols: List[str]):

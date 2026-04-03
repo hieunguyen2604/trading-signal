@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-from backend.utils.indicators import calculate_ema, calculate_rsi, calculate_macd, calculate_volume_ratio, calculate_atr
+from utils.indicators import calculate_ema, calculate_rsi, calculate_macd, calculate_volume_ratio, calculate_atr
 
 class SignalEngine:
     @staticmethod

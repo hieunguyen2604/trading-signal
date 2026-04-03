@@ -2,8 +2,8 @@ import json
 import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional
-from backend.services.websocket_manager import manager
-from backend.services.edge_service import edge_service
+from services.websocket_manager import manager
+from services.edge_service import edge_service
 
 class TradeManager:
     """Manages lifecycles of active trades (Break-even, Trailing Stop, PnL) and archives to EdgeService."""
