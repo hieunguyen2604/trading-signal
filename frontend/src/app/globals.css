@@ -10,20 +10,23 @@
   --color-foreground: var(--foreground);
 }
 
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-  margin: 0;
-  overflow-x: hidden;
+@layer base {
+  body {
+    @apply antialiased overflow-x-hidden;
+    background: radial-gradient(circle at top right, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+    background-attachment: fixed;
+    color: #0f172a;
+  }
 }
 
-/* Minimalist Utilities */
-.panel {
-  background: #09090b; /* zinc-950 */
-  border: 1px solid #27272a; /* zinc-800 */
+@layer components {
+  .panel {
+    @apply bg-white/70 backdrop-blur-3xl border border-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.05)];
+  }
+  
+  .panel-glass {
+    @apply bg-white/40 backdrop-blur-2xl border border-white/60 shadow-lg;
+  }
 }
 
 .card {

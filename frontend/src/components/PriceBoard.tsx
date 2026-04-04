@@ -36,14 +36,14 @@ function PriceCard({ data }: { data: PriceUpdate }) {
     <motion.div
       layout
       className={cn(
-        "relative p-4 rounded-xl panel overflow-hidden border",
-        isStrongBuy ? "border-emerald-500/30" : isStrongSell ? "border-rose-500/30" : "border-zinc-800"
+        "relative p-4 rounded-xl panel overflow-hidden border transition-all duration-300",
+        isStrongBuy ? "border-emerald-500 bg-emerald-50/10" : isStrongSell ? "border-rose-500 bg-rose-50/10" : "border-slate-200"
       )}
     >
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                 {data.symbol.replace("USDT", "")}
              </span>
           </div>
@@ -56,7 +56,7 @@ function PriceCard({ data }: { data: PriceUpdate }) {
                   exit={{ opacity: 0 }}
                   className={cn(
                     "flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter",
-                    isLiqLong ? "bg-rose-500 text-white" : "bg-emerald-500 text-zinc-900"
+                    isLiqLong ? "bg-rose-600 text-white" : "bg-emerald-600 text-white"
                   )}
                 >
                   <Flame className="w-2.5 h-2.5" />
@@ -65,7 +65,7 @@ function PriceCard({ data }: { data: PriceUpdate }) {
              ) : (
                 <Zap className={cn(
                   "w-3 h-3 transition-colors duration-300",
-                  isUp ? "text-emerald-500" : "text-rose-500"
+                  isUp ? "text-emerald-600" : "text-rose-600"
                 )} />
              )}
           </AnimatePresence>
@@ -78,7 +78,7 @@ function PriceCard({ data }: { data: PriceUpdate }) {
             animate={{ y: 0, opacity: 1 }}
             className={cn(
               "text-xl font-black tabular-nums tracking-tighter",
-              isUp ? "text-emerald-500" : "text-rose-500"
+              isUp ? "text-emerald-600" : "text-rose-600"
             )}
           >
             {formatCurrency(data.price)}
@@ -89,20 +89,20 @@ function PriceCard({ data }: { data: PriceUpdate }) {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 opacity-60">
-                <Activity className="w-2.5 h-2.5 text-zinc-500" />
-                <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest">Order Pressure</span>
+                <Activity className="w-2.5 h-2.5 text-slate-400" />
+                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Order Pressure</span>
             </div>
             <span className={cn(
               "text-[9px] font-black tabular-nums",
-              data.obi > 0 ? "text-emerald-500" : "text-rose-500"
+              data.obi > 0 ? "text-emerald-600" : "text-rose-600"
             )}>
               {(data.obi * 100).toFixed(0)}%
             </span>
           </div>
-          <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+          <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
              <motion.div 
                 animate={{ width: `${obiWidth}%` }}
-                className={cn("h-full", data.obi > 0 ? "bg-emerald-500" : "bg-rose-500")}
+                className={cn("h-full", data.obi > 0 ? "bg-emerald-600" : "bg-rose-600")}
              />
           </div>
         </div>

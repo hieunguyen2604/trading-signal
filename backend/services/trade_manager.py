@@ -1,9 +1,12 @@
 import json
 import asyncio
+import os
 from datetime import datetime
 from typing import Dict, List, Optional
 from services.websocket_manager import manager
 from services.edge_service import edge_service
+
+TRADES_PATH = os.path.join(os.path.dirname(__file__), "..", "active_trades.json")
 
 class TradeManager:
     """Manages lifecycles of active trades (Break-even, Trailing Stop, PnL) and archives to EdgeService."""
@@ -11,6 +14,27 @@ class TradeManager:
         self.account_balance = account_balance
         self.risk_percent = risk_percent
         self.active_trades: Dict[str, dict] = {}
+        self.latest_signals: Dict[str, dict] = {} # Alpha v12.4: Cache for immediate UI retrieval
+        self.load_trades()
+
+
+    def load_trades(self):
+        """Recover active trades from disk."""
+        if os.path.exists(TRADES_PATH):
+            try:
+                with open(TRADES_PATH, "r") as f:
+                    self.active_trades = json.load(f)
+                    print(f"Trade Recovery System: Loaded {len(self.active_trades)} active positions.")
+            except Exception as e:
+                print(f"Failed to load active trades: {e}")
+
+    def save_trades(self):
+        """Persist current active trades to disk."""
+        try:
+            with open(TRADES_PATH, "w") as f:
+                json.dump(self.active_trades, f)
+        except Exception as e:
+            print(f"Failed to save active trades: {e}")
 
     def calculate_position_size(self, entry: float, stop: float) -> float:
         """Calculate coin units based on 1% risk."""
@@ -64,16 +88,14 @@ class TradeManager:
         if final_status:
             trade["tradeStatus"] = final_status
             status_label = "WIN" if pnl_pct > 0 else "LOSS"
-            # Persistent Archive (Alpha v5.5)
             edge_service.record_trade(symbol, trade["signal"], entry, current_price, pnl_pct, status_label)
             print(f"[{symbol}] Trade Archived: {status_label} ({pnl_pct}%)")
-            
-            # Remove from active but keep for a few seconds so UI shows the hit
             del self.active_trades[symbol]
         
+        self.save_trades()
         return trade
 
-    def activate_signal(self, symbol: str, signal_data: dict):
+    async def activate_signal(self, symbol: str, signal_data: dict):
         """Turn a CONFIRMED or STRONG signal into an ACTIVE trade."""
         if symbol in self.active_trades and self.active_trades[symbol]["tradeStatus"] not in ["STOP_LOSS_HIT", "TP2_HIT"]:
             return # Already active
@@ -84,7 +106,7 @@ class TradeManager:
             
             position_size = self.calculate_position_size(entry, stop)
             
-            self.active_trades[symbol] = {
+            new_trade = {
                 **signal_data,
                 "positionSize": position_size,
                 "riskAmount": self.account_balance * self.risk_percent,
@@ -92,7 +114,71 @@ class TradeManager:
                 "pnlPct": 0.0,
                 "currentPrice": entry
             }
+            
+            self.active_trades[symbol] = new_trade
             print(f"[{symbol}] Trade Activated @ {entry} (Size: {position_size})")
+            self.save_trades()
+            
+            # 11.5: Immediate broadcast so UI reflects the new trade instantly
+            await manager.broadcast(json.dumps({
+                "type": "TRADE_UPDATE",
+                **new_trade
+            }), "signals")
+            
+            # 12.1: Sync Portfolio Stats
+            await self.broadcast_portfolio_stats()
+
+    def clear_all_signals(self):
+        """Purges the signal cache during strategy mode transitions."""
+        self.latest_signals.clear()
+        print("TradeManager: Signal cache purged for tactical realignment.")
+
+    def update_latest_signal(self, symbol: str, signal_data: dict):
+        """Updates the persistent cache of the latest signals."""
+        self.latest_signals[symbol] = signal_data
+
+    def get_latest_signals(self) -> List[dict]:
+        """Returns the current prioritized list of opportunistic signals."""
+        return list(self.latest_signals.values())
+
+
+    async def broadcast_portfolio_stats(self):
+        """Calculates and broadcasts global risk metrics to all terminals."""
+        stats = self.get_exposure_stats()
+        await manager.broadcast(json.dumps({
+            "type": "PORTFOLIO_SYNC",
+            **stats
+        }), "signals")
+
+    def get_exposure_stats(self) -> dict:
+        """Calculates total risk, directional bias, and asset concentration."""
+        total_risk = 0.0
+        buys = 0
+        sells = 0
+        symbols = []
+        
+        for symbol, trade in self.active_trades.items():
+            total_risk += trade.get("riskAmount", 0)
+            if trade["signal"] == "BUY": buys += 1
+            else: sells += 1
+            symbols.append(symbol)
+            
+        risk_percent = (total_risk / self.account_balance) * 100 if self.account_balance > 0 else 0
+        
+        bias = "NEUTRAL"
+        if buys > sells + 2: bias = "HIGH LONG"
+        elif sells > buys + 2: bias = "HIGH SHORT"
+        elif buys > sells: bias = "LONG BIAS"
+        elif sells > buys: bias = "SHORT BIAS"
+        
+        return {
+            "totalRisk": round(total_risk, 2),
+            "riskPercent": round(risk_percent, 2),
+            "directionalBias": bias,
+            "activePositions": len(self.active_trades),
+            "symbols": symbols,
+            "balance": self.account_balance
+        }
 
 # Global singleton
 trade_manager = TradeManager()

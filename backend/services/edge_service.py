@@ -37,28 +37,38 @@ class EdgeService:
             conn.commit()
 
     def get_stats(self) -> dict:
-        """Calculates performance metrics (Win Rate, PnL, Profit Factor)."""
+        """Calculates performance metrics filtered by active strategy mode."""
+        from services.signal_engine import SignalEngine
+        mode = SignalEngine.ACTIVE_MODE
+        
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # 1. Total Win Rate
-            cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE status IN ('WIN', 'TP2_HIT')")
+            # 1. Total Win Rate for current MODE
+            cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE status IN ('WIN', 'TP2_HIT') AND signal LIKE ?", (f"%{mode}%",))
             wins = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM historical_trades")
+            cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE signal LIKE ?", (f"%{mode}%",))
             total = cursor.fetchone()[0]
             
+            # Fallback to global if mode data is sparse (for UI richness)
+            if total < 5:
+                cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE status IN ('WIN', 'TP2_HIT')")
+                wins = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM historical_trades")
+                total = cursor.fetchone()[0]
+
             win_rate = (wins / total * 100) if total > 0 else 0
             
-            # 2. Net PnL (Virtual $ on $1000 base)
-            cursor.execute("SELECT SUM(pnl_pct) FROM historical_trades")
+            # 2. Net PnL (Mode Specific)
+            cursor.execute("SELECT SUM(pnl_pct) FROM historical_trades WHERE signal LIKE ?", (f"%{mode}%",))
             total_pnl_pct = cursor.fetchone()[0] or 0
             
             # 3. Last 24h Stats
             yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE timestamp > ?", (yesterday,))
+            cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE timestamp > ? AND signal LIKE ?", (yesterday, f"%{mode}%"))
             trades_24h = cursor.fetchone()[0]
             
-            cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE timestamp > ? AND status IN ('WIN', 'TP2_HIT')", (yesterday,))
+            cursor.execute("SELECT COUNT(*) FROM historical_trades WHERE timestamp > ? AND status IN ('WIN', 'TP2_HIT') AND signal LIKE ?", (yesterday, f"%{mode}%"))
             wins_24h = cursor.fetchone()[0]
             win_rate_24h = (wins_24h / trades_24h * 100) if trades_24h > 0 else 0
 
@@ -70,6 +80,46 @@ class EdgeService:
                 "winRate24h": round(win_rate_24h, 1),
                 "netPnL": round(total_pnl_pct * 10, 2) # Assuming $1000 base with 1% risk
             }
+
+
+    def get_equity_data(self) -> List[dict]:
+        """Returns a list of PnL snapshots for the Equity Curve chart."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT timestamp, pnl_pct FROM historical_trades ORDER BY timestamp ASC")
+            rows = cursor.fetchall()
+            
+            equity = []
+            cumulative_pnl = 0.0
+            
+            # Start with baseline
+            equity.append({"time": "Start", "pnl": 0.0})
+            
+            for row in rows:
+                cumulative_pnl += row[1]
+                equity.append({
+                    "time": row[0].split(" ")[1], # Just HH:MM:SS
+                    "pnl": round(cumulative_pnl, 2)
+                })
+            
+            return equity
+
+    def get_trade_log_csv(self) -> str:
+        """Generates a CSV string of the entire trade history for export."""
+        import csv
+        import io
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["ID", "Symbol", "Signal", "Entry", "Exit", "PnL%", "Status", "Timestamp"])
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM historical_trades ORDER BY timestamp DESC")
+            writer.writerows(cursor.fetchall())
+            
+        return output.getvalue()
+
 
 # Global singleton
 edge_service = EdgeService()

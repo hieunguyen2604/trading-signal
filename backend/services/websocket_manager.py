@@ -16,6 +16,13 @@ class WebSocketManager:
         if channel in self.active_connections:
             self.active_connections[channel].add(websocket)
 
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        """Send a message to a single websocket client."""
+        try:
+            await websocket.send_text(message)
+        except Exception:
+            pass # Client likely disconnected during handshake
+
     def disconnect(self, websocket: WebSocket, channel: str):
         if channel in self.active_connections:
             if websocket in self.active_connections[channel]:

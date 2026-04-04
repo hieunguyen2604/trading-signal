@@ -8,6 +8,7 @@ from services.candle_stream_service import candle_service
 from services.liquidity_service import liquidity_service
 from services.liquidation_service import liquidation_service
 from services.edge_service import edge_service
+from services.market_sentiment_service import sentiment_service
 from services.websocket_manager import manager
 
 app = FastAPI(title="Crypto Trade Assistant v5.5 (Alpha)")
@@ -41,7 +42,25 @@ async def startup_event():
     # Start Stats Broadcast Loop (Alpha v5.5)
     asyncio.create_task(broadcast_stats_loop())
     
-    print("Professional Trade Assistant Alpha v5.5 Engine Started...")
+    # Start Market Sentiment Loop (Alpha v8.0)
+    asyncio.create_task(broadcast_sentiment_loop())
+    
+    print("Professional Trade Assistant Alpha v8.0 Engine Started...")
+
+async def broadcast_sentiment_loop():
+    """Periodically broadcasts Fear & Greed Index and News to the UI."""
+    while True:
+        try:
+            sentiment_service.fetch_fng()
+            sentiment_service.fetch_news()
+            sentiment = sentiment_service.get_sentiment()
+            await manager.broadcast(json.dumps({
+                "type": "SENTIMENT_UPDATE",
+                **sentiment
+            }), "signals")
+        except Exception as e:
+            print(f"Sentiment Broadcast Error: {e}")
+        await asyncio.sleep(300) # Every 5 minutes for news/f&g
 
 async def broadcast_stats_loop():
     """Periodically broadcasts historical strategy performance to the UI."""

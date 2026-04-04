@@ -9,8 +9,8 @@ export type SignalUpdate = {
   confidence: "PROVISIONAL" | "CONFIRMED" | "STRONG BUY" | "STRONG SELL" | "CONTRA-TREND";
   market_sync: boolean;
   btc_trend: "UP" | "DOWN" | "NEUTRAL";
-  trend_15m: "UP" | "DOWN" | "NEUTRAL";
-  trend_1h: "UP" | "DOWN" | "NEUTRAL";
+  trend_1st: "UP" | "DOWN" | "NEUTRAL";
+  trend_2nd: "UP" | "DOWN" | "NEUTRAL";
   obi: number;
   liq_magnet_price: number;
   liq_vol: number;
@@ -26,6 +26,18 @@ export type SignalUpdate = {
   tradeStatus?: string;
   positionSize?: number;
   pnlPct?: number;
+  sentiment_alignment?: "BULLISH" | "BEARISH" | "NEUTRAL";
+};
+
+export type SentimentData = {
+  fng_value: number;
+  fng_classification: string;
+  last_updated: string | null;
+  top_news: Array<{
+    title: string;
+    sentiment: "bullish" | "bearish" | "neutral";
+    source: string;
+  }>;
 };
 
 export type StrategyStats = {
@@ -40,16 +52,47 @@ export type StrategyStats = {
 export function useSignalWebSocket(url: string) {
   const [signals, setSignals] = useState<Record<string, SignalUpdate>>({});
   const [activeTrades, setActiveTrades] = useState<Record<string, SignalUpdate>>({});
-  const [stats, setStats] = useState<StrategyStats>({
-    totalTrades: 0,
-    winRate: 0,
-    totalPnlPct: 0,
-    trades24h: 0,
-    winRate24h: 0,
-    netPnL: 0
-  });
+  const [stats, setStats] = useState<any>(null);
+  const [sentiment, setSentiment] = useState<any>(null);
+  const [portfolio, setPortfolio] = useState<any>(null);
+  const [strategyMode, setStrategyMode] = useState<"SCALP" | "SWING">("SWING");
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    // Initial data fetch
+    const fetchInitialData = async () => {
+      try {
+        const [statsRes, modeRes, portfolioRes, signalsRes] = await Promise.all([
+          fetch("http://localhost:8000/api/signals/status"),
+          fetch("http://localhost:8000/api/signals/mode"),
+          fetch("http://localhost:8000/api/signals/portfolio/stats"),
+          fetch("http://localhost:8000/api/signals/active")
+        ]);
+        
+        const statsData = await statsRes.json();
+        const modeData = await modeRes.json();
+        const portfolioData = await portfolioRes.json();
+        const signalsData = await signalsRes.json();
+        
+        setStats(statsData);
+        setStrategyMode(modeData.mode);
+        setPortfolio(portfolioData);
+        
+        // Populate initial signals
+        if (Array.isArray(signalsData)) {
+          const signalMap: Record<string, SignalUpdate> = {};
+          signalsData.forEach(s => signalMap[s.symbol] = s);
+          setSignals(signalMap);
+        }
+
+      } catch (err) {
+        console.error("Failed to fetch initial data:", err);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
 
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN) return;
@@ -61,8 +104,36 @@ export function useSignalWebSocket(url: string) {
     ws.onmessage = (event) => {
       const data: any = JSON.parse(event.data);
       
-      if (data.type === "STATS_UPDATE") {
+      if (data.type === "WELCOME_UPDATE") {
+        setStrategyMode(data.mode);
+        setSentiment(data.sentiment);
+        setStats(data.stats);
+      } else if (data.type === "PORTFOLIO_SYNC") {
+        setPortfolio(data);
+      } else if (data.type === "STATS_UPDATE") {
         setStats(data);
+      } else if (data.type === "SENTIMENT_UPDATE") {
+        setSentiment(data);
+      } else if (data.type === "STRATEGY_CHANGE") {
+        setStrategyMode(data.mode);
+        setSignals({}); // Hard clear current signals 
+        setActiveTrades({}); // Clear active trades to avoid stale data
+        
+        // Alpha v12.4: Trigger Hard Refresh of signals via HTTP fallback
+        setTimeout(async () => {
+          try {
+            const res = await fetch("http://localhost:8000/api/signals/active");
+            const freshSignals = await res.json();
+            if (Array.isArray(freshSignals)) {
+               const signalMap: Record<string, SignalUpdate> = {};
+               freshSignals.forEach(s => signalMap[s.symbol] = s);
+               setSignals(signalMap);
+            }
+          } catch (e) {
+            console.error("Hard refresh failed:", e);
+          }
+        }, 500);
+
       } else if (data.type === "TRADE_UPDATE") {
         setActiveTrades((prev) => ({
           ...prev,
@@ -97,5 +168,14 @@ export function useSignalWebSocket(url: string) {
   const liveTrades = Object.values(activeTrades)
     .filter(t => !["STOP_LOSS_HIT", "TP2_HIT"].includes(t.tradeStatus || ""));
 
-  return { signals: topSignals, activeTrades: liveTrades, stats, isConnected };
+  return { 
+    signals: topSignals, 
+    activeTrades: liveTrades, 
+    stats, 
+    sentiment, 
+    portfolio,
+    strategyMode,
+    setStrategyMode,
+    isConnected 
+  };
 }

@@ -1,0 +1,35 @@
+# Environments
+.env
+venv/
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Local Python State
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Tactical Application State
+backend/active_trades.json
+backend/config.json
+backend/edge_history.db
+
+# OS Files
+.DS_Store
+Thumbs.db
