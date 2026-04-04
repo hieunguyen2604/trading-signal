@@ -22,12 +22,14 @@ export type SignalUpdate = {
   riskReward: string;
   is_final: boolean;
   updatedAt: string;
+  ai_insight?: string; // Intelligence Era v13.1
   type?: "SIGNAL_UPDATE" | "TRADE_UPDATE" | "STATS_UPDATE";
   tradeStatus?: string;
   positionSize?: number;
   pnlPct?: number;
   sentiment_alignment?: "BULLISH" | "BEARISH" | "NEUTRAL";
 };
+
 
 export type SentimentData = {
   fng_value: number;

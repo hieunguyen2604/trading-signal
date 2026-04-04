@@ -120,10 +120,11 @@ class CandleStreamService:
                 liq_context = liquidity_service.get_liquidity_context(symbol)
                 liquid_context = liquidation_service.get_magnet_context(symbol)
                 
-                signal_data = SignalEngine.calculate_signal(
+                signal_data = await SignalEngine.calculate_signal(
                     symbol.upper(), df_1m, df_15m, df_1h, df_4h, df_1d, is_final,
                     btc_context, liq_context, liquid_context
                 )
+
                 
                 if signal_data:
                     from services.trade_manager import trade_manager
@@ -173,10 +174,11 @@ class CandleStreamService:
             liq_context = liquidity_service.get_liquidity_context(symbol)
             liquid_context = liquidation_service.get_magnet_context(symbol)
             
-            signal_data = SignalEngine.calculate_signal(
+            signal_data = await SignalEngine.calculate_signal(
                 symbol.upper(), df_1m, df_15m, df_1h, df_4h, df_1d, False,
                 btc_context, liq_context, liquid_context
             )
+
             
             
             if signal_data:

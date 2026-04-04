@@ -3,7 +3,8 @@
 import { SignalUpdate } from "@/hooks/useSignalWebSocket";
 import { formatCurrency, cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Target, Activity, CheckCircle2, ShieldAlert, Link, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Copy, Target, Activity, CheckCircle2, ShieldAlert, Link, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
+
 import { useState } from "react";
 
 interface SignalTableProps {
@@ -103,7 +104,17 @@ export function SignalTable({ signals, strategyMode, isRecalculating }: SignalTa
                             {signal.is_final ? <CheckCircle2 className="w-2.5 h-2.5" /> : <Activity className="w-2.5 h-2.5" />}
                             {signal.confidence}
                           </div>
+
+                          {signal.ai_insight && (
+                            <div className="mt-1 max-w-[200px]">
+                              <div className="flex items-center gap-1.5 text-[7px] text-zinc-400 font-medium leading-tight">
+                                <Sparkles className="w-2 h-2 text-amber-400 shrink-0" />
+                                <span className="italic">{signal.ai_insight}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
+
 
                       </div>
                     </td>

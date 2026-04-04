@@ -151,16 +151,24 @@ class SignalEngine:
         }
 
     @classmethod
-    def calculate_signal(cls, symbol: str, df_1m: pd.DataFrame, df_15m: pd.DataFrame, df_1h: pd.DataFrame, 
+    async def calculate_signal(cls, symbol: str, df_1m: pd.DataFrame, df_15m: pd.DataFrame, df_1h: pd.DataFrame, 
                          df_4h: pd.DataFrame, df_1d: pd.DataFrame, is_final: bool, 
                          btc_context: dict, liq_context: dict, liquid_context: dict):
-        """Unified signal calculation with dynamic strategy mode."""
+        """Unified signal calculation with dynamic strategy mode and AI Intelligence."""
         if cls.ACTIVE_MODE == "SCALP":
             result = cls._calculate_scalp_score(df_1m, df_15m, df_1h, btc_context.get("btc_trend_15m"), btc_context.get("btc_trend_1h"), liq_context, liquid_context)
         else:
             result = cls._calculate_swing_score(df_1h, df_4h, df_1d, btc_context.get("btc_trend_4h"), btc_context.get("btc_trend_1d"), liq_context, liquid_context)
             
         if result:
+            # Alpha v13.1: Async AI Tactical Reasoner (Only for CONFIRMED/STRONG)
+            ai_insight = None
+            if result["score"] >= 70:
+                from services.ai_service import ai_service
+                ai_insight = await ai_service.get_tactical_justification(
+                    symbol, result["signal"], result["score"], result
+                )
+
             return {
                 "symbol": symbol,
                 "strategy": cls.ACTIVE_MODE,
@@ -178,11 +186,12 @@ class SignalEngine:
                 "takeProfit2": result.get("takeProfit2", 0),
                 "riskReward": result["riskReward"],
                 "sentiment_alignment": result["sentiment_alignment"],
+                "ai_insight": ai_insight, # Intelligence Era Field
                 "is_final": is_final,
                 "updatedAt": datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z' # High precision
             }
-
         return None
+
 
 # Initial load
 SignalEngine.load_config()
