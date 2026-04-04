@@ -8,17 +8,21 @@ services:
     container_name: antigravity_backend
     ports:
       - "8000:8000"
-    volumes:
-      # Ánh xạ file DB ra ngoài máy chủ thật để không bị mất dữ liệu khi restart container
-      - ./backend/edge_history.db:/app/edge_history.db
     restart: always # Tự động chạy lại nếu bị lỗi (rất cần cho bot chạy 24/7)
     environment:
       - PYTHONUNBUFFERED=1
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      # Ánh xạ file DB ra ngoài máy chủ thật để không bị mất dữ liệu khi restart container
+      - ./backend/edge_history.db:/app/edge_history.db
+      - ./backend/active_trades.json:/app/active_trades.json
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
     container_name: antigravity_frontend
     ports:
       - "3000:3000"

@@ -35,7 +35,7 @@ async def websocket_signals(websocket: WebSocket):
     
     initial_state = {
         "type": "WELCOME_UPDATE",
-        "mode": SignalEngine.ACTIVE_MODE,
+        "mode": "AETHER",
         "sentiment": sentiment_service.get_sentiment(),
         "stats": edge_service.get_stats()
     }
@@ -52,53 +52,15 @@ async def websocket_signals(websocket: WebSocket):
 
 @router.get("/status")
 async def get_status():
-    """System health status."""
     return {
         "status": "online",
-        "market": "LIVE",
-        "mode": SignalEngine.ACTIVE_MODE,
-        "active_clients": {
-            "prices": len(manager.active_connections["prices"]),
-            "signals": len(manager.active_connections["signals"])
-        },
-        "timestamp": datetime.now().isoformat()
+        "mode": "AETHER",
+        "engine": "Alpha v12.5"
     }
 
 @router.get("/mode")
 async def get_mode():
-    """Get current strategy mode."""
-    return {"mode": SignalEngine.ACTIVE_MODE}
-
-@router.post("/mode")
-async def set_mode(mode: str):
-    """Set strategy mode and broadcast change."""
-    if mode in ["SCALP", "SWING"]:
-        from services.trade_manager import trade_manager
-        
-        # Alpha v12.4: PURGE SIGNAL CACHE BEFORE SWITCH
-        trade_manager.clear_all_signals()
-        
-        SignalEngine.set_mode(mode)
-
-        # Broadcast strategy change event to all clients
-        await manager.broadcast(json.dumps({
-            "type": "STRATEGY_CHANGE",
-            "mode": mode
-        }), "signals")
-        
-        # Trigger immediate re-calculation for all symbols to provide "instant" feel
-        await candle_service.recalculate_all()
-        
-        # Broadcast isolated stats for the new mode
-        from services.edge_service import edge_service
-        await manager.broadcast(json.dumps({
-            "type": "STATS_UPDATE",
-            **edge_service.get_stats()
-        }), "signals")
-        
-        return {"status": "success", "mode": mode}
-
-    return {"status": "error", "message": "Invalid mode"}
+    return {"mode": "AETHER"}
 
 @router.get("/portfolio/stats")
 async def get_portfolio_stats():
@@ -132,4 +94,10 @@ async def get_active_signals():
     """Get the current top prioritized tactical signals from cache."""
     from services.trade_manager import trade_manager
     return trade_manager.get_latest_signals()
+
+@router.get("/trades/active")
+async def get_active_positions():
+    """Get all current live positions from the trade manager."""
+    from services.trade_manager import trade_manager
+    return list(trade_manager.active_trades.values())
 

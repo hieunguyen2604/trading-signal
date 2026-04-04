@@ -9,11 +9,10 @@ import { useState } from "react";
 
 interface SignalTableProps {
   signals: SignalUpdate[];
-  strategyMode: "SCALP" | "SWING";
   isRecalculating?: boolean;
 }
 
-export function SignalTable({ signals, strategyMode, isRecalculating }: SignalTableProps) {
+export function SignalTable({ signals, isRecalculating }: SignalTableProps) {
   const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
   const copyToClipboard = (value: string | number, label: string) => {
@@ -41,9 +40,9 @@ export function SignalTable({ signals, strategyMode, isRecalculating }: SignalTa
         <thead className="bg-slate-100/80">
           <tr className="border-b border-slate-200">
             <th className="px-6 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase italic">Asset Identity</th>
-            <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">{strategyMode === "SCALP" ? "Scalp Sync" : "Swing Sync"}</th>
+            <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Market Sync</th>
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Sentiment</th>
-            <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">{strategyMode === "SCALP" ? "15M | 1H Trend" : "4H | 1D Trend"}</th>
+            <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Trend Analysis (MTF)</th>
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Magnet</th>
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Entry Price</th>
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Safety SL</th>
@@ -88,12 +87,6 @@ export function SignalTable({ signals, strategyMode, isRecalculating }: SignalTa
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-slate-900 text-sm">{signal.symbol}</span>
-                            <span className={cn(
-                              "px-1.5 py-0.5 rounded-[4px] text-[7px] font-black uppercase tracking-widest",
-                              strategyMode === "SCALP" ? "bg-cyan-100 text-cyan-700 border border-cyan-200" : "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                            )}>
-                              {strategyMode}
-                            </span>
                           </div>
                           <div className={cn(
                             "text-[8px] font-bold uppercase tracking-widest flex items-center gap-1",
@@ -152,7 +145,7 @@ export function SignalTable({ signals, strategyMode, isRecalculating }: SignalTa
                             "flex flex-col items-center gap-0.5",
                             signal.trend_1st === "UP" ? "text-emerald-500" : signal.trend_1st === "DOWN" ? "text-rose-500" : "text-zinc-600"
                           )}>
-                            <span className="text-[7px] font-black">{strategyMode === "SCALP" ? "15M" : "4H"}</span>
+                            <span className="text-[7px] font-black">4H</span>
                             {signal.trend_1st === "UP" ? <TrendingUp className="w-3 h-3" /> : signal.trend_1st === "DOWN" ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                           </div>
                           <div className="w-[1px] h-4 bg-slate-200" />
@@ -160,7 +153,7 @@ export function SignalTable({ signals, strategyMode, isRecalculating }: SignalTa
                             "flex flex-col items-center gap-0.5",
                             signal.trend_2nd === "UP" ? "text-emerald-500" : signal.trend_2nd === "DOWN" ? "text-rose-500" : "text-zinc-600"
                           )}>
-                            <span className="text-[7px] font-black">{strategyMode === "SCALP" ? "1H" : "1D"}</span>
+                            <span className="text-[7px] font-black">1D</span>
                             {signal.trend_2nd === "UP" ? <TrendingUp className="w-3 h-3" /> : signal.trend_2nd === "DOWN" ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                           </div>
                        </div>

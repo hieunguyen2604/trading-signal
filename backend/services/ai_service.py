@@ -2,7 +2,8 @@ import os
 import json
 import httpx
 import asyncio
-from typing import Optional
+import time
+from typing import Optional, Dict
 from dotenv import load_dotenv
 import google.generativeai as genai
 
@@ -13,6 +14,10 @@ class AIService:
     """Tactical Reasoner for AETHER Terminal. Support for local (Ollama) and API (OpenAI)."""
     def __init__(self):
         self.gemini_key = os.getenv("GEMINI_API_KEY")
+        self.justification_cache: Dict[str, dict] = {} # Key: symbol+signal, Value: {"text": str, "timestamp": float}
+        self.CACHE_TTL = 300 # 5 minutes
+        self.last_429_time = 0.0 # Circuit breaker for 429 errors
+        self.COOLDOWN_PERIOD = 60 # Stop background AI for 60s on quota hit
         
         if self.gemini_key:
             self.provider = "GEMINI"
@@ -27,7 +32,21 @@ class AIService:
             print("AI Service: Initialized in OFFLINE mode (No Gemini Key)")
 
     async def get_tactical_justification(self, symbol: str, signal: str, score: int, context: dict) -> str:
-        """Generates a concise, professional trader justification for a signal."""
+        """Generates a concise, professional trader justification for a signal with caching."""
+        
+        # 1. Check Cache first to save quota
+        cache_key = f"{symbol}_{signal}_{score // 5}" # Round score to nearest 5 for better cache reuse
+        now = time.time()
+        
+        if cache_key in self.justification_cache:
+            entry = self.justification_cache[cache_key]
+            if now - entry["timestamp"] < self.CACHE_TTL:
+                return entry["text"]
+
+        # 2. Circuit Breaker: Check if we are in 429 cooldown
+        if now - self.last_429_time < self.COOLDOWN_PERIOD:
+            return self._get_fallback_justification(signal, context)
+
         prompt = f"""
         Act as an institutional quantitative trader. 
         Analyze this signal: {symbol} {signal} (Score: {score}/100)
@@ -43,7 +62,14 @@ class AIService:
         
         try:
             if self.provider == "GEMINI" and self.client:
-                return await self._get_gemini_response(prompt)
+                text = await self._get_gemini_response(prompt)
+                
+                # Cache the new justification
+                self.justification_cache[cache_key] = {
+                    "text": text,
+                    "timestamp": now
+                }
+                return text
             else:
                 return self._get_fallback_justification(signal, context)
         except Exception as e:
@@ -64,8 +90,52 @@ class AIService:
             )
             return response.text.strip()
         except Exception as e:
+            error_str = str(e)
+            if "429" in error_str or "ResourceExhausted" in error_str:
+                self.last_429_time = time.time()
+                print("!!! AI QUOTA HIT: Activating circuit breaker (60s cooldown) !!!")
+            
             print(f"Gemini API Error: {e}")
             raise e
+
+    async def chat(self, messages: list) -> str:
+        """General AI conversation with market awareness."""
+        if self.provider != "GEMINI" or not self.client:
+            return "AI Service is currently offline. Please check your Gemini API key."
+            
+        try:
+            # Convert simple message format to Gemini's history format
+            history = []
+            for msg in messages[:-1]:
+                role = "user" if msg["role"] == "user" else "model"
+                history.append({"role": role, "parts": [msg["content"]]})
+            
+            chat_session = self.client.start_chat(history=history)
+            last_message = messages[-1]["content"]
+            
+            # System prompt for context-aware chatting
+            system_context = """
+            You are AETHER AI, an elite crypto trading assistant. 
+            Tone: Professional, data-driven, concise. 
+            Assist users with signals, risk management, and market outlook.
+            """
+            
+            response = await chat_session.send_message_async(
+                f"{system_context}\n\nUser: {last_message}",
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=500,
+                    temperature=0.7,
+                )
+            )
+            return response.text.strip()
+        except Exception as e:
+            error_str = str(e)
+            if "429" in error_str or "ResourceExhausted" in error_str:
+                self.last_429_time = time.time() # Also trigger cooldown from chat hits
+                return "Gemini API Quota Exceeded. The background assistant is currently busy. Please wait a moment before trying again."
+            
+            print(f"AI Chat Error: {e}")
+            return "I encountered an error processing your request. Please try again."
 
     def _get_fallback_justification(self, signal: str, context: dict) -> str:
         """Deterministic professional justifications for offline mode."""

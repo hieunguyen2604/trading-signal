@@ -9,33 +9,21 @@ import { EdgeStatsMatrix } from "./EdgeStatsMatrix";
 import { SentimentWidget } from "./SentimentWidget";
 import { PerformanceChart } from "./PerformanceChart";
 import { PortfolioHub } from "./PortfolioHub";
+import { SessionPulse } from "./SessionPulse";
+import Chatbot from "./Chatbot";
 import { Zap, Activity, Info, BarChart3, Database, Newspaper } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 
 export default function DashboardContainer() {
-  const { signals, activeTrades, stats, sentiment, portfolio, strategyMode, setStrategyMode, isConnected } = useSignalWebSocket("ws://localhost:8000/api/signals/ws/signals");
-  const [isRecalculating, setIsRecalculating] = useState(false);
+  const { signals, activeTrades, stats, sentiment, portfolio, strategyMode, isConnected } = useSignalWebSocket("ws://127.0.0.1:8000/api/signals/ws/signals");
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleToggleMode = async () => {
-    setIsRecalculating(true);
-    const nextMode = strategyMode === "SCALP" ? "SWING" : "SCALP";
-    try {
-      await fetch(`http://localhost:8000/api/signals/mode?mode=${nextMode}`, { method: "POST" });
-      // The WebSocket will also handle the mode switch and signal clearing
-      // but we add a local delay to ensure the UI feels 'refreshed'
-      setTimeout(() => setIsRecalculating(false), 800);
-    } catch (err) {
-      console.error("Failed to toggle mode:", err);
-      setIsRecalculating(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-emerald-500/20">
@@ -53,47 +41,16 @@ export default function DashboardContainer() {
                     AETHER <span className="text-emerald-600 italic">Terminal</span>
                   </h1>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className={cn(
-                      "w-1 h-1 rounded-full",
-                      strategyMode === "SCALP" ? "bg-cyan-500" : "bg-emerald-500"
-                    )} />
-                    <span className={cn(
-                      "text-[8px] font-black uppercase tracking-[0.2em]",
-                      strategyMode === "SCALP" ? "text-cyan-500" : "text-emerald-500"
-                    )}>{strategyMode} MODE ACTIVE</span>
+                    <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-500">
+                      AETHER ENGINE ACTIVE
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
           
           <div className="flex items-center gap-6">
-            <button 
-              onClick={handleToggleMode}
-              disabled={isRecalculating}
-              className={cn(
-                "flex items-center gap-3 px-4 py-2 rounded-xl border transition-all group",
-                isRecalculating ? "bg-slate-50 border-slate-200 cursor-not-allowed" : "bg-slate-100 border-slate-200 hover:bg-slate-200"
-              )}
-            >
-              <div className="flex flex-col items-end">
-                <span className="text-[7px] text-slate-500 font-black uppercase tracking-tighter">
-                  {isRecalculating ? "Applying..." : "Switch Strategy"}
-                </span>
-                <span className="text-[10px] text-slate-900 font-bold">{strategyMode === "SCALP" ? "SWING" : "SCALP"}</span>
-              </div>
-              <div className="w-10 h-5 rounded-full bg-slate-200 p-1 relative flex items-center">
-                {isRecalculating ? (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Activity className="w-3 h-3 text-slate-400 animate-spin" />
-                  </div>
-                ) : (
-                  <div className={cn(
-                    "w-3 h-3 rounded-full transition-all duration-300",
-                    strategyMode === "SCALP" ? "translate-x-0 bg-cyan-600" : "translate-x-5 bg-emerald-600"
-                  )} />
-                )}
-              </div>
-            </button>
 
             <div className="flex flex-row md:flex-col items-center md:items-end justify-end group gap-2 md:gap-0">
               <div className="flex items-center gap-2 text-[8px] md:text-[10px] uppercase tracking-widest font-black text-slate-400 group-hover:text-slate-600 transition-colors">
@@ -146,7 +103,14 @@ export default function DashboardContainer() {
             <Newspaper className="w-4 h-4" />
             <h2 className="uppercase text-[10px] font-black tracking-[0.25em]">Market Intelligence Layer</h2>
           </div>
-          <SentimentWidget sentiment={sentiment} />
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            <div className="xl:col-span-3">
+              <SentimentWidget sentiment={sentiment} />
+            </div>
+            <div className="xl:col-span-1">
+              <SessionPulse />
+            </div>
+          </div>
         </section>
 
         {/* Live Execution (Horizontal) */}
@@ -180,33 +144,9 @@ export default function DashboardContainer() {
           </div>
           
           <div className="panel rounded-2xl overflow-hidden relative">
-            <AnimatePresence>
-              {isRecalculating && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-20 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center gap-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <Activity className="w-6 h-6 text-slate-900 animate-pulse" />
-                    <span className="text-sm font-black uppercase tracking-[0.3em] text-slate-900">Tactical Calibration</span>
-                  </div>
-                  <div className="w-48 h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ x: "-100%" }}
-                      animate={{ x: "100%" }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-full h-full bg-slate-900"
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
             
              <SignalTable 
             signals={signals} 
-            strategyMode={strategyMode} 
             isRecalculating={false} // Handled by local overlay
           />
           </div>
@@ -217,13 +157,15 @@ export default function DashboardContainer() {
             <div className="space-y-2">
               <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest italic">Quant Advisory</h4>
               <p className="text-xs leading-relaxed text-slate-500">
-                Signals are generated using **MTF Trend confirmation (1h/4h/1d)** and **Swing Intelligence**. Always wait for "CONFIRMED" status before tactical entry.
+                Signals are generated using **MTF Trend confirmation (1h/4h/1d)** and **Tactical Intelligence**. Always wait for "CONFIRMED" status before entry.
               </p>
             </div>
           </div>
         </section>
       </main>
 
+      {/* Floating AI Chatbot */}
+      <Chatbot />
     </div>
   );
 }

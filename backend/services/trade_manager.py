@@ -157,12 +157,18 @@ class TradeManager:
         sells = 0
         symbols = []
         
+        from services.signal_engine import SignalEngine
+        mode = SignalEngine.ACTIVE_MODE
+        
         for symbol, trade in self.active_trades.items():
-            total_risk += trade.get("riskAmount", 0)
-            if trade["signal"] == "BUY": buys += 1
-            else: sells += 1
-            symbols.append(symbol)
-            
+            # Alpha v12.5: Filter by Strategy Mode (SCALP/SWING)
+            if trade.get("strategy") == mode:
+                total_risk += trade.get("riskAmount", 0)
+                if trade["signal"] == "BUY": buys += 1
+                else: sells += 1
+                symbols.append(symbol)
+                
+        active_count = len(symbols)
         risk_percent = (total_risk / self.account_balance) * 100 if self.account_balance > 0 else 0
         
         bias = "NEUTRAL"
@@ -175,7 +181,7 @@ class TradeManager:
             "totalRisk": round(total_risk, 2),
             "riskPercent": round(risk_percent, 2),
             "directionalBias": bias,
-            "activePositions": len(self.active_trades),
+            "activePositions": active_count,
             "symbols": symbols,
             "balance": self.account_balance
         }

@@ -23,6 +23,7 @@ export type SignalUpdate = {
   is_final: boolean;
   updatedAt: string;
   ai_insight?: string; // Intelligence Era v13.1
+  strategy?: string;   // Alpha v12.5: Strategy Mode
   type?: "SIGNAL_UPDATE" | "TRADE_UPDATE" | "STATS_UPDATE";
   tradeStatus?: string;
   positionSize?: number;
@@ -57,28 +58,32 @@ export function useSignalWebSocket(url: string) {
   const [stats, setStats] = useState<any>(null);
   const [sentiment, setSentiment] = useState<any>(null);
   const [portfolio, setPortfolio] = useState<any>(null);
-  const [strategyMode, setStrategyMode] = useState<"SCALP" | "SWING">("SWING");
+  const [strategyMode] = useState<string>("AETHER");
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
-
   useEffect(() => {
+    // Alpha v13.5: Dynamic API Base for Docker/Production
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 
+                    (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}:8000` : "http://127.0.0.1:8000");
+
     // Initial data fetch
     const fetchInitialData = async () => {
       try {
-        const [statsRes, modeRes, portfolioRes, signalsRes] = await Promise.all([
-          fetch("http://localhost:8000/api/signals/status"),
-          fetch("http://localhost:8000/api/signals/mode"),
-          fetch("http://localhost:8000/api/signals/portfolio/stats"),
-          fetch("http://localhost:8000/api/signals/active")
+        const [statsRes, modeRes, portfolioRes, signalsRes, tradesRes] = await Promise.all([
+          fetch(`${API_BASE}/api/signals/status`),
+          fetch(`${API_BASE}/api/signals/mode`),
+          fetch(`${API_BASE}/api/signals/portfolio/stats`),
+          fetch(`${API_BASE}/api/signals/active`),
+          fetch(`${API_BASE}/api/signals/trades/active`)
         ]);
         
         const statsData = await statsRes.json();
         const modeData = await modeRes.json();
         const portfolioData = await portfolioRes.json();
         const signalsData = await signalsRes.json();
+        const tradesData = await tradesRes.json();
         
         setStats(statsData);
-        setStrategyMode(modeData.mode);
         setPortfolio(portfolioData);
         
         // Populate initial signals
@@ -86,6 +91,13 @@ export function useSignalWebSocket(url: string) {
           const signalMap: Record<string, SignalUpdate> = {};
           signalsData.forEach(s => signalMap[s.symbol] = s);
           setSignals(signalMap);
+        }
+
+        // Alpha v12.5: Populate initial active positions
+        if (Array.isArray(tradesData)) {
+          const tradeMap: Record<string, SignalUpdate> = {};
+          tradesData.forEach(t => tradeMap[t.symbol] = t);
+          setActiveTrades(tradeMap);
         }
 
       } catch (err) {
@@ -107,7 +119,6 @@ export function useSignalWebSocket(url: string) {
       const data: any = JSON.parse(event.data);
       
       if (data.type === "WELCOME_UPDATE") {
-        setStrategyMode(data.mode);
         setSentiment(data.sentiment);
         setStats(data.stats);
       } else if (data.type === "PORTFOLIO_SYNC") {
@@ -116,26 +127,6 @@ export function useSignalWebSocket(url: string) {
         setStats(data);
       } else if (data.type === "SENTIMENT_UPDATE") {
         setSentiment(data);
-      } else if (data.type === "STRATEGY_CHANGE") {
-        setStrategyMode(data.mode);
-        setSignals({}); // Hard clear current signals 
-        setActiveTrades({}); // Clear active trades to avoid stale data
-        
-        // Alpha v12.4: Trigger Hard Refresh of signals via HTTP fallback
-        setTimeout(async () => {
-          try {
-            const res = await fetch("http://localhost:8000/api/signals/active");
-            const freshSignals = await res.json();
-            if (Array.isArray(freshSignals)) {
-               const signalMap: Record<string, SignalUpdate> = {};
-               freshSignals.forEach(s => signalMap[s.symbol] = s);
-               setSignals(signalMap);
-            }
-          } catch (e) {
-            console.error("Hard refresh failed:", e);
-          }
-        }, 500);
-
       } else if (data.type === "TRADE_UPDATE") {
         setActiveTrades((prev) => ({
           ...prev,
@@ -177,7 +168,6 @@ export function useSignalWebSocket(url: string) {
     sentiment, 
     portfolio,
     strategyMode,
-    setStrategyMode,
     isConnected 
   };
 }

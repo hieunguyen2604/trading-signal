@@ -97,8 +97,12 @@ class EdgeService:
             
             for row in rows:
                 cumulative_pnl += row[1]
+                # Safe timestamp splitting for HH:MM:SS
+                timestamp_str = row[0]
+                time_label = timestamp_str.split(" ")[1] if " " in timestamp_str else timestamp_str
+                
                 equity.append({
-                    "time": row[0].split(" ")[1], # Just HH:MM:SS
+                    "time": time_label,
                     "pnl": round(cumulative_pnl, 2)
                 })
             

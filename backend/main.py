@@ -3,6 +3,7 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.signals import router as signals_router
+from api.ai import router as ai_router
 from services.trade_stream_service import TradeStreamService
 from services.candle_stream_service import candle_service
 from services.liquidity_service import liquidity_service
@@ -30,22 +31,24 @@ trade_service = TradeStreamService(TRACKED_SYMBOLS)
 
 @app.on_event("startup")
 async def startup_event():
-    # Start Ticker Stream
-    asyncio.create_task(trade_service.start())
-    # Start MTF Candle Stream
-    asyncio.create_task(candle_service.start())
-    # Start Order Flow Liquidity Stream
+    # 1. Initialize historical data for all MTF frames
+    print("Initializing Market Intelligence Layer...")
+    await candle_service.initialize_data()
+    
+    # 2. Start Background Streams
+    asyncio.create_task(trade_service.start_standalone()) # Start without re-init
+    asyncio.create_task(candle_service.start_standalone()) # Start without re-init
     asyncio.create_task(liquidity_service.start())
-    # Start Liquidation Hunter Stream
     asyncio.create_task(liquidation_service.start())
     
-    # Start Stats Broadcast Loop (Alpha v5.5)
-    asyncio.create_task(broadcast_stats_loop())
+    # 3. Force Instant Signal Calculation (Alpha v12.5)
+    asyncio.create_task(candle_service.recalculate_all())
     
-    # Start Market Sentiment Loop (Alpha v8.0)
+    # 4. Start Metrics Broadcast Loops
+    asyncio.create_task(broadcast_stats_loop())
     asyncio.create_task(broadcast_sentiment_loop())
     
-    print("Professional Trade Assistant Alpha v8.0 Engine Started...")
+    print("Professional Trade Assistant Alpha v8.0 Engine Started (AETHER MODE)...")
 
 async def broadcast_sentiment_loop():
     """Periodically broadcasts Fear & Greed Index and News to the UI."""
@@ -84,7 +87,8 @@ def shutdown_event():
 
 # Include routes
 app.include_router(signals_router, prefix="/api/signals", tags=["engine"])
+app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

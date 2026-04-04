@@ -37,9 +37,9 @@ class CandleStreamService:
                 except Exception as e:
                     print(f"MTF Init Error {symbol} {interval}: {e}")
 
-    async def start(self):
+    async def start_standalone(self):
+        """Starts the WebSocket stream without re-initializing historical data."""
         self.is_running = True
-        await self.initialize_data()
         
         # Subscribe to all intervals for each symbol
         streams = []
@@ -60,6 +60,11 @@ class CandleStreamService:
             except Exception as e:
                 print(f"MTF Stream Error: {e}. Reconnecting in 2s...")
                 await asyncio.sleep(2)
+
+    async def start(self):
+        """Standard start which includes data initialization."""
+        await self.initialize_data()
+        await self.start_standalone()
 
     async def handle_kline(self, data: dict):
         """Processes kline data, manages MTF frames, and triggers signal logic."""
@@ -94,9 +99,9 @@ class CandleStreamService:
             
             # Trigger conditions:
             # - SCALP: Every 1m update
-            # - SWING: 1h update OR finalizing 15m candle
+            # - AETHER: 1h update OR finalizing 15m candle
             should_trigger = (mode == "SCALP" and interval == "1m") or \
-                             (mode == "SWING" and (interval == "1h" or (interval == "15m" and is_final)))
+                             (mode == "AETHER" and (interval == "1h" or (interval == "15m" and is_final)))
             
             if should_trigger:
                 # Prepare exhaustive context for the Engine

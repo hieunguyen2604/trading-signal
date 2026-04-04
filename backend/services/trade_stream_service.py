@@ -1,6 +1,7 @@
 import json
 import asyncio
 import websockets
+from datetime import datetime
 from typing import List, Dict
 import pandas as pd
 ACTIVE_SYMBOLS = ["btcusdt", "ethusdt", "solusdt", "bnbusdt", "xrpusdt", "adausdt", "dogeusdt", "linkusdt", "dotusdt", "avaxusdt"]
@@ -13,7 +14,8 @@ class TradeStreamService:
         self.base_url = "wss://fstream.binance.com/ws"
         self.is_running = False
 
-    async def start(self):
+    async def start_standalone(self):
+        """Starts the WebSocket stream for trade data."""
         self.is_running = True
         streams = "/".join([f"{s}@aggTrade" for s in self.symbols])
         url = f"{self.base_url}/{streams}"
@@ -29,6 +31,10 @@ class TradeStreamService:
             except Exception as e:
                 print(f"Trade Stream Error: {e}. Reconnecting in 2s...")
                 await asyncio.sleep(2)
+
+    async def start(self):
+        """Standard start for consistent service interface."""
+        await self.start_standalone()
 
     async def handle_trade(self, data: dict):
         """Broadcast instant price updates and update trade lifecycle."""

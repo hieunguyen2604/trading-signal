@@ -12,13 +12,16 @@ export function PerformanceChart() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/signals/edge/history");
+      const res = await fetch("http://127.0.0.1:8000/api/signals/edge/history");
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+      
       const history = await res.json();
-      setData(history);
+      setData(Array.isArray(history) ? history : []);
       setLoading(false);
     } catch (err) {
       console.error("Failed to fetch equity history:", err);
-      setLoading(false);
+      // Don't set loading to false immediately on first failure to allow retry
+      if (data.length > 0) setLoading(false);
     }
   };
 
@@ -29,7 +32,7 @@ export function PerformanceChart() {
   }, []);
 
   const handleExport = () => {
-    window.open("http://localhost:8000/api/signals/edge/export", "_blank");
+    window.open("http://127.0.0.1:8000/api/signals/edge/export", "_blank");
   };
 
   if (loading) {
