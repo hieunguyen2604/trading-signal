@@ -84,7 +84,7 @@ export default function DashboardContainer() {
           <PriceBoard />
         </section>
 
-        {/* Strategy Edge & Performance (Alpha v12.2 Professional Era) */}
+        {/* Strategy Edge & Performance */}
         <section className="space-y-4">
           <div className="flex items-center gap-3 text-zinc-500 px-2">
             <Database className="w-4 h-4" />
@@ -97,7 +97,7 @@ export default function DashboardContainer() {
           </div>
         </section>
 
-        {/* Market Sentiment (Alpha v8.0) */}
+        {/* Market Sentiment */}
         <section className="space-y-4">
           <div className="flex items-center gap-3 text-zinc-500 px-2">
             <Newspaper className="w-4 h-4" />
@@ -113,7 +113,7 @@ export default function DashboardContainer() {
           </div>
         </section>
 
-        {/* Live Execution (Horizontal) */}
+        {/* Live Execution */}
         <section className="space-y-4">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-rose-500 rounded-lg shadow-lg shadow-rose-200">
@@ -128,7 +128,7 @@ export default function DashboardContainer() {
             </div>
           </div>
 
-          {/* Alpha v12.1 Portfolio Exposure Hub */}
+          {/* Portfolio Exposure Hub */}
           <PortfolioHub portfolio={portfolio} />
           
           <TradeExecutionPanel activeTrades={activeTrades} />

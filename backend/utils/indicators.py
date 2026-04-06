@@ -41,3 +41,10 @@ def calculate_volume_ratio(volumes: pd.Series, period: int = 20) -> float:
     if avg_vol == 0:
         return 1.0
     return float(volumes.iloc[-1] / avg_vol)
+def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: int = 2) -> tuple:
+    """Calculate Bollinger Bands (Upper, Middle, Lower)."""
+    middle_band = prices.rolling(window=period).mean()
+    std_dev = prices.rolling(window=period).std()
+    upper_band = middle_band + (std_dev * num_std)
+    lower_band = middle_band - (std_dev * num_std)
+    return upper_band, middle_band, lower_band

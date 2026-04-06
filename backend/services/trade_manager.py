@@ -88,7 +88,7 @@ class TradeManager:
         if final_status:
             trade["tradeStatus"] = final_status
             status_label = "WIN" if pnl_pct > 0 else "LOSS"
-            edge_service.record_trade(symbol, trade["signal"], entry, current_price, pnl_pct, status_label)
+            edge_service.record_trade(symbol, trade["signal"], entry, current_price, pnl_pct, status_label, trade.get("strategy", "AETHER"))
             print(f"[{symbol}] Trade Archived: {status_label} ({pnl_pct}%)")
             del self.active_trades[symbol]
         
@@ -96,11 +96,29 @@ class TradeManager:
         return trade
 
     async def activate_signal(self, symbol: str, signal_data: dict):
-        """Turn a CONFIRMED or STRONG signal into an ACTIVE trade."""
-        if symbol in self.active_trades and self.active_trades[symbol]["tradeStatus"] not in ["STOP_LOSS_HIT", "TP2_HIT"]:
-            return # Already active
+        """Activates a live trade or PIVOTS (Auto-reverse) if a STRONG contrary signal appears."""
+        # 1. Pivot Logic (Strategy Pivot & Flip v14.6)
+        if symbol in self.active_trades:
+            old_trade = self.active_trades[symbol]
+            is_opposite = old_trade["signal"] != signal_data["signal"]
+            is_strong_reversal = signal_data["confidence"] == "STRONG"
             
-        if signal_data["confidence"] in ["CONFIRMED", "STRONG BUY", "STRONG SELL"]:
+            if is_opposite and is_strong_reversal:
+                # Close the old trade at current price
+                exit_price = signal_data["entryPrice"]
+                direction = 1 if old_trade["signal"] == "BUY" else -1
+                pnl_pct = ((exit_price - old_trade["entryPrice"]) / old_trade["entryPrice"]) * 100 * direction
+                
+                status_label = "PIVOT_EXIT"
+                edge_service.record_trade(symbol, old_trade["signal"], old_trade["entryPrice"], exit_price, pnl_pct, status_label, old_trade.get("strategy", "AETHER"))
+                
+                print(f"[{symbol}] STRATEGY PIVOT: Auto-Closing {old_trade['signal']} at {exit_price} ({pnl_pct}%)")
+                del self.active_trades[symbol]
+            else:
+                # Keep current trade if it's the same direction or reversal is weak
+                return
+            
+        if signal_data["confidence"] in ["CONFIRMED", "STRONG"]:
             entry = signal_data["entryPrice"]
             stop = signal_data["stopLoss"]
             
@@ -116,29 +134,24 @@ class TradeManager:
             }
             
             self.active_trades[symbol] = new_trade
-            print(f"[{symbol}] Trade Activated @ {entry} (Size: {position_size})")
+            print(f"[{symbol}] Trade Activated @ {entry}")
             self.save_trades()
             
-            # 11.5: Immediate broadcast so UI reflects the new trade instantly
             await manager.broadcast(json.dumps({
                 "type": "TRADE_UPDATE",
                 **new_trade
             }), "signals")
             
-            # 12.1: Sync Portfolio Stats
             await self.broadcast_portfolio_stats()
 
     def clear_all_signals(self):
-        """Purges the signal cache during strategy mode transitions."""
+        """Purges cached signals."""
         self.latest_signals.clear()
-        print("TradeManager: Signal cache purged for tactical realignment.")
 
     def update_latest_signal(self, symbol: str, signal_data: dict):
-        """Updates the persistent cache of the latest signals."""
         self.latest_signals[symbol] = signal_data
 
     def get_latest_signals(self) -> List[dict]:
-        """Returns the current prioritized list of opportunistic signals."""
         return list(self.latest_signals.values())
 
 

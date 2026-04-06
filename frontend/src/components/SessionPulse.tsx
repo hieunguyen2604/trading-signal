@@ -21,8 +21,10 @@ const SESSIONS: Session[] = [
 
 export function SessionPulse() {
   const [now, setNow] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
@@ -83,7 +85,7 @@ export function SessionPulse() {
               <span className="text-xl font-black text-slate-900 tabular-nums">1:2.5 (TACTICAL)</span>
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 text-white text-[9px] font-black">
                 <Clock className="w-2.5 h-2.5" />
-                {localTimeStr} <span className="text-slate-400 font-medium">ICT</span>
+                {mounted ? localTimeStr : "--:--"} <span className="text-slate-400 font-medium">ICT</span>
               </div>
             </div>
           </div>

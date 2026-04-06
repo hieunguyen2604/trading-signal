@@ -83,11 +83,16 @@ function ActiveTradeCard({ trade }: { trade: SignalUpdate }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Target className="w-3 h-3 text-emerald-500" />
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Target</span>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">TP1 (1x)</span>
           </div>
-          <span className="text-xs font-mono text-emerald-600 font-bold">
-            {formatCurrency(trade.takeProfit2 > 0 ? trade.takeProfit2 : trade.takeProfit1)}
-          </span>
+          <span className="text-xs font-mono text-emerald-600 font-bold">{formatCurrency(trade.takeProfit1)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="w-3 h-3 text-emerald-600/50" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">TP2 (2x)</span>
+          </div>
+          <span className="text-xs font-mono text-slate-500 font-bold">{formatCurrency(trade.takeProfit2)}</span>
         </div>
       </div>
 

@@ -14,8 +14,8 @@ class CandleStreamService:
         self.intervals = ["1m", "15m", "1h", "4h", "1d"]
         self.base_url = "wss://fstream.binance.com/ws"
         self.rest_url = "https://fapi.binance.com/fapi/v1/klines"
-        # data_frames keyed by (symbol, interval)
         self.data_frames: Dict[Tuple[str, str], pd.DataFrame] = {}
+        self.atr_cache: Dict[str, float] = {} # Symbol -> Last ATR
         self.is_running = False
 
     async def initialize_data(self):
@@ -101,7 +101,7 @@ class CandleStreamService:
             # - SCALP: Every 1m update
             # - AETHER: 1h update OR finalizing 15m candle
             should_trigger = (mode == "SCALP" and interval == "1m") or \
-                             (mode == "AETHER" and (interval == "1h" or (interval == "15m" and is_final)))
+                             (mode == "AETHER" and (interval == "1h" or (interval == "15m" and is_final) or (interval == "1m" and is_final)))
             
             if should_trigger:
                 # Prepare exhaustive context for the Engine
@@ -135,12 +135,13 @@ class CandleStreamService:
                     from services.trade_manager import trade_manager
                     from services.tactical_alert_service import alert_service
                     
-                    # Alpha v12.4: Sync to persistent signal cache
+                    # Update ATR Cache for trailing stops
+                    if "atr" in signal_data:
+                        self.atr_cache[symbol] = signal_data["atr"]
+                    
                     trade_manager.update_latest_signal(symbol.upper(), signal_data)
                     await trade_manager.activate_signal(symbol.upper(), signal_data)
-
                     
-                    # Alpha v12.0 Tactical Alerts (Filtered High-Confidence Signals)
                     alert_service.send_signal_alert(signal_data)
                     
                     await manager.broadcast(json.dumps({
@@ -148,9 +149,11 @@ class CandleStreamService:
                         **signal_data
                     }), "signals")
 
-            # Alpha v6.0: Update Active Trades via TradeManager for every tick
+            # Update Active Trades via TradeManager for every tick
             from services.trade_manager import trade_manager
-            trade_update = trade_manager.update_trade(symbol, float(new_row["close"]), 0.001) # Using a default min ATR for now
+            # Use real ATR from cache; fallback to 0.5% price if unavailable
+            current_atr = self.atr_cache.get(symbol, float(new_row["close"]) * 0.005)
+            trade_update = trade_manager.update_trade(symbol, float(new_row["close"]), current_atr)
             if trade_update:
                 await manager.broadcast(json.dumps({
                     "type": "TRADE_UPDATE",

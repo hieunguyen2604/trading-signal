@@ -46,6 +46,7 @@ export function SignalTable({ signals, isRecalculating }: SignalTableProps) {
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Magnet</th>
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Entry Price</th>
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Safety SL</th>
+            <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Tactical Targets</th>
             <th className="px-4 py-4 text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-center">Alpha Tier</th>
           </tr>
         </thead>
@@ -189,6 +190,20 @@ export function SignalTable({ signals, isRecalculating }: SignalTableProps) {
                         <button onClick={() => copyToClipboard(signal.stopLoss, "SL")} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded">
                           <Copy className="w-3 h-3 text-slate-400" />
                         </button>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex flex-col items-center gap-1 group">
+                         <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">TP1</span>
+                            <span className="text-xs font-mono text-slate-900 font-bold">{formatCurrency(signal.takeProfit1)}</span>
+                         </div>
+                         <div className="w-8 h-[1px] bg-slate-100" />
+                         <div className="flex items-center gap-1.5 opacity-60">
+                            <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tighter">TP2</span>
+                            <span className="text-xs font-mono text-slate-700 font-bold">{formatCurrency(signal.takeProfit2)}</span>
+                         </div>
                       </div>
                     </td>
    

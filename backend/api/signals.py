@@ -29,7 +29,7 @@ async def websocket_signals(websocket: WebSocket):
     """Handle signal streaming with initial state handshake."""
     await manager.connect(websocket, "signals")
     
-    # 11.5: Send Initial State Handshake
+    # Initial State Handshake
     from services.market_sentiment_service import sentiment_service
     from services.edge_service import edge_service
     
@@ -54,8 +54,7 @@ async def websocket_signals(websocket: WebSocket):
 async def get_status():
     return {
         "status": "online",
-        "mode": "AETHER",
-        "engine": "Alpha v12.5"
+        "mode": "AETHER"
     }
 
 @router.get("/mode")

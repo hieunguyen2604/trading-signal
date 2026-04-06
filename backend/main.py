@@ -12,7 +12,7 @@ from services.edge_service import edge_service
 from services.market_sentiment_service import sentiment_service
 from services.websocket_manager import manager
 
-app = FastAPI(title="Crypto Trade Assistant v5.5 (Alpha)")
+app = FastAPI(title="Crypto Trade Assistant (AETHER)")
 
 # Enable CORS for Next.js
 app.add_middleware(
@@ -31,31 +31,28 @@ trade_service = TradeStreamService(TRACKED_SYMBOLS)
 
 @app.on_event("startup")
 async def startup_event():
-    # 1. Initialize historical data for all MTF frames
-    print("Initializing Market Intelligence Layer...")
+    print("Starting Trade Assistant Engine...")
     await candle_service.initialize_data()
     
-    # 2. Start Background Streams
-    asyncio.create_task(trade_service.start_standalone()) # Start without re-init
-    asyncio.create_task(candle_service.start_standalone()) # Start without re-init
+    # Start Background Streams
+    asyncio.create_task(trade_service.start_standalone())
+    asyncio.create_task(candle_service.start_standalone())
     asyncio.create_task(liquidity_service.start())
     asyncio.create_task(liquidation_service.start())
-    
-    # 3. Force Instant Signal Calculation (Alpha v12.5)
     asyncio.create_task(candle_service.recalculate_all())
     
-    # 4. Start Metrics Broadcast Loops
+    # Broadcast Loops
     asyncio.create_task(broadcast_stats_loop())
     asyncio.create_task(broadcast_sentiment_loop())
     
-    print("Professional Trade Assistant Alpha v8.0 Engine Started (AETHER MODE)...")
+    print("Engine active and broadcasting.")
 
 async def broadcast_sentiment_loop():
     """Periodically broadcasts Fear & Greed Index and News to the UI."""
     while True:
         try:
-            sentiment_service.fetch_fng()
-            sentiment_service.fetch_news()
+            await sentiment_service.fetch_fng()
+            await sentiment_service.fetch_news()
             sentiment = sentiment_service.get_sentiment()
             await manager.broadcast(json.dumps({
                 "type": "SENTIMENT_UPDATE",
